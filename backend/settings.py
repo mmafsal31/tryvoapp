@@ -47,8 +47,8 @@ MIDDLEWARE = [
 ]
 
 # URLS & WSGI
-ROOT_URLCONF = "backend.urls"
-WSGI_APPLICATION = "backend.wsgi.application"
+ROOT_URLCONF = "urls"
+WSGI_APPLICATION = "wsgi.application"
 
 # TEMPLATES
 TEMPLATES = [
