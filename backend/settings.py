@@ -138,7 +138,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-ALLOWED_HOSTS = ["https://tryvobackend.onrender.com"]
+ALLOWED_HOSTS = ["tryvobackend.onrender.com"]
 
 CORS_ALLOWED_ORIGINS = [
     "tryvo.netlify.app",  # replace with your deployed frontend
