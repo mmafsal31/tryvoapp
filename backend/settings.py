@@ -7,24 +7,15 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
-# -------------------------------------------------------------------
 # BASE DIRECTORY
-# -------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 
-
-# -------------------------------------------------------------------
-# SECURITY / ENVIRONMENT
-# -------------------------------------------------------------------
+# SECURITY
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
-
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
 
-
-# -------------------------------------------------------------------
 # APPLICATIONS
-# -------------------------------------------------------------------
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -42,17 +33,11 @@ INSTALLED_APPS = [
     "core",
 ]
 
-
-# -------------------------------------------------------------------
 # MIDDLEWARE
-# -------------------------------------------------------------------
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-
-    # WhiteNoise for static files on Render
     "whitenoise.middleware.WhiteNoiseMiddleware",
-
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -61,17 +46,15 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# URLS & WSGI
+ROOT_URLCONF = "backend.urls"
+WSGI_APPLICATION = "backend.wsgi.application"
 
-ROOT_URLCONF = "urls"
-
-
-# -------------------------------------------------------------------
 # TEMPLATES
-# -------------------------------------------------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"], 
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -83,24 +66,15 @@ TEMPLATES = [
     },
 ]
 
-
-WSGI_APPLICATION = "wsgi.application"
-
-
-# -------------------------------------------------------------------
-# DATABASE — Render (SQLite with disk)
-# -------------------------------------------------------------------
+# DATABASE
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3")
+        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
     }
 }
 
-
-# -------------------------------------------------------------------
-# AUTH / PASSWORD VALIDATION
-# -------------------------------------------------------------------
+# AUTH & PASSWORD VALIDATORS
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -108,34 +82,23 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-
 AUTH_USER_MODEL = "core.User"
 
-
-# -------------------------------------------------------------------
 # INTERNATIONALIZATION
-# -------------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-
-# -------------------------------------------------------------------
-# STATIC / MEDIA (Render + WhiteNoise)
-# -------------------------------------------------------------------
+# STATIC / MEDIA
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = BASE_DIR / "media"
 
-
-# -------------------------------------------------------------------
-# DRF + JWT CONFIG
-# -------------------------------------------------------------------
+# DRF + JWT
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -150,23 +113,10 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-
-# -------------------------------------------------------------------
-# CORS CONFIG
-# -------------------------------------------------------------------
+# CORS
 NETLIFY_URL = os.environ.get("NETLIFY_URL")
+CORS_ALLOWED_ORIGINS = [url for url in [NETLIFY_URL] if url] + ["http://localhost:5173"]
+CORS_ALLOW_ALL_ORIGINS = True  # Only for testing
 
-CORS_ALLOWED_ORIGINS = [
-    NETLIFY_URL for NETLIFY_URL in [NETLIFY_URL] if NETLIFY_URL
-] + [
-    "http://localhost:5173",
-]
-
-# Optional for testing only:
-CORS_ALLOW_ALL_ORIGINS = True  # keep True until frontend works
-
-
-# -------------------------------------------------------------------
-# DEFAULT PRIMARY KEY TYPE
-# -------------------------------------------------------------------
+# DEFAULT PRIMARY KEY
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
