@@ -2,12 +2,13 @@ services:
   - type: web
     name: yellowspace-backend
     env: python
-    buildCommand: "./build.sh"
-    startCommand: "gunicorn backend.wsgi:application"
+    buildCommand: "./backend/build.sh"
+    startCommand: "gunicorn wsgi:application --bind 0.0.0.0:$PORT"
     envVars:
       - key: PYTHON_VERSION
-        value: 3.12.0
+        value: 3.13.4
       - key: DJANGO_SETTINGS_MODULE
-        value: backend.settings
+        value: settings
       - key: SECRET_KEY
         value: your-secret-key
+git add backend/build.sh manage.py wsgi.py settings.py render.yaml
