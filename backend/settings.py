@@ -12,12 +12,15 @@ import os
 # -------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 
+
 # -------------------------------------------------------------------
 # SECURITY / ENVIRONMENT
 # -------------------------------------------------------------------
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
+
 
 # -------------------------------------------------------------------
 # APPLICATIONS
@@ -39,13 +42,17 @@ INSTALLED_APPS = [
     "core",
 ]
 
+
 # -------------------------------------------------------------------
 # MIDDLEWARE
 # -------------------------------------------------------------------
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+
+    # WhiteNoise for static files on Render
     "whitenoise.middleware.WhiteNoiseMiddleware",
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -54,18 +61,42 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+
 ROOT_URLCONF = "urls"
-WSGI_APPLICATION = "wsgi.application"
+
 
 # -------------------------------------------------------------------
-# DATABASE
+# TEMPLATES
+# -------------------------------------------------------------------
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"], 
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+
+WSGI_APPLICATION = "wsgi.application"
+
+
+# -------------------------------------------------------------------
+# DATABASE — Render (SQLite with disk)
 # -------------------------------------------------------------------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3")
     }
 }
+
 
 # -------------------------------------------------------------------
 # AUTH / PASSWORD VALIDATION
@@ -77,7 +108,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+
 AUTH_USER_MODEL = "core.User"
+
 
 # -------------------------------------------------------------------
 # INTERNATIONALIZATION
@@ -87,15 +120,18 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+
 # -------------------------------------------------------------------
-# STATIC / MEDIA
+# STATIC / MEDIA (Render + WhiteNoise)
 # -------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
 
 # -------------------------------------------------------------------
 # DRF + JWT CONFIG
@@ -114,12 +150,21 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+
 # -------------------------------------------------------------------
 # CORS CONFIG
 # -------------------------------------------------------------------
 NETLIFY_URL = os.environ.get("NETLIFY_URL")
-CORS_ALLOWED_ORIGINS = [NETLIFY_URL] if NETLIFY_URL else []
-CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOWED_ORIGINS = [
+    NETLIFY_URL for NETLIFY_URL in [NETLIFY_URL] if NETLIFY_URL
+] + [
+    "http://localhost:5173",
+]
+
+# Optional for testing only:
+CORS_ALLOW_ALL_ORIGINS = True  # keep True until frontend works
+
 
 # -------------------------------------------------------------------
 # DEFAULT PRIMARY KEY TYPE
