@@ -154,15 +154,16 @@ SIMPLE_JWT = {
 # -------------------------------------------------------------------
 # CORS CONFIG
 # -------------------------------------------------------------------
-NETLIFY_URL = os.environ.get("NETLIFY_URL", "")
+NETLIFY_URL = os.environ.get("NETLIFY_URL")
 
 CORS_ALLOWED_ORIGINS = [
-    NETLIFY_URL,  # your real Netlify site URL from env
+    NETLIFY_URL for NETLIFY_URL in [NETLIFY_URL] if NETLIFY_URL
+] + [
     "http://localhost:5173",
 ]
 
-# Temporary testing fallback (turn off later!)
-CORS_ALLOW_ALL_ORIGINS = True
+# Optional for testing only:
+CORS_ALLOW_ALL_ORIGINS = True  # keep True until frontend works
 
 
 # -------------------------------------------------------------------
