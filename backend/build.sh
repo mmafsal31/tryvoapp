@@ -3,7 +3,7 @@ set -e
 
 echo "Starting backend build for Render..."
 
-# Go to backend folder
+# Go to the backend folder
 cd "$(dirname "$0")"
 
 # Upgrade pip
@@ -19,7 +19,3 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 
 echo "Backend build completed successfully!"
-
-# Start Gunicorn
-echo "Starting Gunicorn..."
-gunicorn wsgi:application --bind 0.0.0.0:$PORT

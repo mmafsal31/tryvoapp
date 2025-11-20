@@ -11,4 +11,3 @@ services:
         value: settings
       - key: SECRET_KEY
         value: your-secret-key
-git add backend/build.sh manage.py wsgi.py settings.py render.yaml
