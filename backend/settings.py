@@ -10,14 +10,19 @@ import os
 # ----------------------------
 # BASE DIRECTORY
 # ----------------------------
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent  # FIXED
 
 # ----------------------------
 # SECURITY
 # ----------------------------
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
+
+ALLOWED_HOSTS = [
+    "tryvobackend.onrender.com",
+    "localhost",
+    "127.0.0.1"
+]
 
 # ----------------------------
 # APPLICATIONS
@@ -84,7 +89,7 @@ TEMPLATES = [
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -113,13 +118,30 @@ USE_TZ = True
 # ----------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [
-    BASE_DIR.parent / "frontend" / "dist",  # Serve React build files if using SPA
-]
+
+# Avoid crash if folder missing on Render
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+if FRONTEND_DIST.exists():
+    STATICFILES_DIRS = [FRONTEND_DIST]
+else:
+    STATICFILES_DIRS = []
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# ----------------------------
+# CORS
+# ----------------------------
+CORS_ALLOWED_ORIGINS = [
+    "https://tryvo.netlify.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
 
 # ----------------------------
 # REST FRAMEWORK + JWT
@@ -137,14 +159,6 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
-
-ALLOWED_HOSTS = ["tryvobackend.onrender.com"]
-
-CORS_ALLOWED_ORIGINS = [
-    "https://tryvo.netlify.app",  # replace with your deployed frontend
-]
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOW_CREDENTIALS = True  # needed if you send cookies
 
 # ----------------------------
 # DEFAULT PRIMARY KEY
