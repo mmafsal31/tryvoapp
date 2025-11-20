@@ -138,6 +138,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+ALLOWED_HOSTS = ["tryvobackend.onrender.com"] 
 # ----------------------------
 # CORS CONFIGURATION
 # ----------------------------
