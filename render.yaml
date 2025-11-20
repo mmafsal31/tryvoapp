@@ -2,7 +2,7 @@ services:
   - type: web
     name: tryvobackend
     env: python
-    buildCommand: "./build.sh"
+    buildCommand: "build.sh"
     startCommand: "gunicorn backend.wsgi:application"
     envVars:
       - key: PYTHON_VERSION
