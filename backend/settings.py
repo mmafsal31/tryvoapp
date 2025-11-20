@@ -114,9 +114,11 @@ SIMPLE_JWT = {
 }
 
 # CORS
-NETLIFY_URL = os.environ.get("NETLIFY_URL")
-CORS_ALLOWED_ORIGINS = [url for url in [NETLIFY_URL] if url] + ["http://localhost:5173"]
-CORS_ALLOW_ALL_ORIGINS = True  # Only for testing
+CORS_ALLOWED_ORIGINS = [
+    "https://your-frontend-deployed-url.netlify.app",  # <-- replace this
+    "http://localhost:5173",  # local dev only
+]
+CORS_ALLOW_ALL_ORIGINS = False  # production-safe
 
 # DEFAULT PRIMARY KEY
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
