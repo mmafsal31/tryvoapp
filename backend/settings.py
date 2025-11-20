@@ -142,12 +142,10 @@ SIMPLE_JWT = {
 # CORS CONFIGURATION
 # ----------------------------
 CORS_ALLOWED_ORIGINS = [
-    "https://reliable-gelato-3df4ce.netlify.app/",  # Replace with your frontend URL
-    "http://localhost:5173",  # React dev server
+    "https://your-netlify-frontend.netlify.app",  # replace with your actual frontend URL
 ]
-CORS_ALLOW_CREDENTIALS = True  # Enable cookies if needed
-CORS_ALLOW_ALL_ORIGINS = False  # Keep False in production
-
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True 
 # ----------------------------
 # DEFAULT PRIMARY KEY
 # ----------------------------
