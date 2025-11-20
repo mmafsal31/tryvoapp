@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: yellowspace-backend
+    name: tryvobackend
     env: python
-    buildCommand: "./backend/build.sh"
-    startCommand: "gunicorn wsgi:application --bind 0.0.0.0:$PORT"
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn wsgi:application"
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.4
