@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
-echo "Starting backend build..."
+echo "Starting backend build for Render..."
 
-# Change to the directory of this script (backend)
+# Always go to the folder where this script lives
 cd "$(dirname "$0")"
 
-echo "Upgrading pip..."
-pip install --upgrade pip
+# Upgrade pip
+python -m pip install --upgrade pip
 
-echo "Installing dependencies from requirements.txt..."
+# Install dependencies
 pip install -r requirements.txt
 
-echo "Running database migrations..."
+# Run migrations
 python manage.py migrate
 
-echo "Collecting static files..."
+# Collect static files
 python manage.py collectstatic --noinput
 
-echo "Build finished successfully!"
+echo "Backend build completed successfully!"
