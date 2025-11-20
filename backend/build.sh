@@ -23,4 +23,4 @@ echo "Backend build completed successfully!"
 # Start Gunicorn with correct module path
 # Your Django wsgi.py is in backend/backend/wsgi.py, so the module path is backend.backend.wsgi
 echo "Starting Gunicorn..."
-gunicorn backend.backend.wsgi:application --bind 0.0.0.0:$PORT
+gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT
