@@ -1,21 +1,27 @@
 """
-Django settings for backend project.
-Production-ready config for Render + Netlify.
+Django settings for Tryvo Backend.
+Production-ready configuration for Render backend + React frontend.
 """
 
 from pathlib import Path
 from datetime import timedelta
 import os
 
+# ----------------------------
 # BASE DIRECTORY
+# ----------------------------
 BASE_DIR = Path(__file__).resolve().parent
 
+# ----------------------------
 # SECURITY
+# ----------------------------
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
 
+# ----------------------------
 # APPLICATIONS
+# ----------------------------
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -33,7 +39,9 @@ INSTALLED_APPS = [
     "core",
 ]
 
+# ----------------------------
 # MIDDLEWARE
+# ----------------------------
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -46,11 +54,15 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# ----------------------------
 # URLS & WSGI
-ROOT_URLCONF = "urls"
-WSGI_APPLICATION = "wsgi.application"
+# ----------------------------
+ROOT_URLCONF = "backend.urls"
+WSGI_APPLICATION = "backend.wsgi.application"
 
+# ----------------------------
 # TEMPLATES
+# ----------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -66,7 +78,9 @@ TEMPLATES = [
     },
 ]
 
+# ----------------------------
 # DATABASE
+# ----------------------------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -74,7 +88,9 @@ DATABASES = {
     }
 }
 
+# ----------------------------
 # AUTH & PASSWORD VALIDATORS
+# ----------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -84,21 +100,30 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTH_USER_MODEL = "core.User"
 
+# ----------------------------
 # INTERNATIONALIZATION
+# ----------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# ----------------------------
 # STATIC / MEDIA
+# ----------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [
+    BASE_DIR.parent / "frontend" / "dist",  # Serve React build files if using SPA
+]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# DRF + JWT
+# ----------------------------
+# REST FRAMEWORK + JWT
+# ----------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -113,12 +138,17 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# CORS
+# ----------------------------
+# CORS CONFIGURATION
+# ----------------------------
 CORS_ALLOWED_ORIGINS = [
-    "https://your-frontend-deployed-url.netlify.app",  # <-- replace this
-    "http://localhost:5173",  # local dev only
+    "https://reliable-gelato-3df4ce.netlify.app/",  # Replace with your frontend URL
+    "http://localhost:5173",  # React dev server
 ]
-CORS_ALLOW_ALL_ORIGINS = False  # production-safe
+CORS_ALLOW_CREDENTIALS = True  # Enable cookies if needed
+CORS_ALLOW_ALL_ORIGINS = False  # Keep False in production
 
+# ----------------------------
 # DEFAULT PRIMARY KEY
+# ----------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
