@@ -138,15 +138,14 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-ALLOWED_HOSTS = ["tryvobackend.onrender.com"] 
-# ----------------------------
-# CORS CONFIGURATION
-# ----------------------------
+ALLOWED_HOSTS = ["https://tryvobackend.onrender.com"]
+
 CORS_ALLOWED_ORIGINS = [
-    "https://your-netlify-frontend.netlify.app",  # replace with your actual frontend URL
+    "tryvo.netlify.app",  # replace with your deployed frontend
 ]
 CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOW_CREDENTIALS = True 
+CORS_ALLOW_CREDENTIALS = True  # needed if you send cookies
+
 # ----------------------------
 # DEFAULT PRIMARY KEY
 # ----------------------------
