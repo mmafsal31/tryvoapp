@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
-set -o errexit
+set -e
 
-# Move to backend folder
-cd backend
+echo "Starting backend build..."
 
-# Install dependencies
+# Change to the directory of this script (backend)
+cd "$(dirname "$0")"
+
+echo "Upgrading pip..."
+pip install --upgrade pip
+
+echo "Installing dependencies from requirements.txt..."
 pip install -r requirements.txt
 
-# Run migrations
+echo "Running database migrations..."
 python manage.py migrate
 
-# Collect static files
+echo "Collecting static files..."
 python manage.py collectstatic --noinput
+
+echo "Build finished successfully!"
