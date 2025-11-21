@@ -20,6 +20,7 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
     "tryvobackend.onrender.com",
+    "tryvo.netlify.app",
     "localhost",
     "127.0.0.1"
 ]
@@ -148,6 +149,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+CORS_ALLOW_HEADERS = ["*"]
 # ----------------------------
 # REST FRAMEWORK + JWT
 # ----------------------------
