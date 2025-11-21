@@ -3,7 +3,7 @@ services:
     name: tryvobackend
     env: python
     workingDirectory: backend
-    buildCommand: "bash build.sh"
+    buildCommand: "bash backend/build.sh"
     startCommand: "gunicorn backend.wsgi:application"
 
 
