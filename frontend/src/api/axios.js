@@ -3,7 +3,7 @@ import axios from "axios";
 import { getToken, logout } from "../utils/auth";
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL + "/api/auth/",
   withCredentials: false,
 });
 

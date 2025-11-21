@@ -22,7 +22,7 @@ ALLOWED_HOSTS = [
     "tryvobackend.onrender.com",
     "tryvo.netlify.app",
     "localhost",
-    "127.0.0.1800"
+    "127.0.0.1",
 ]
 
 # ----------------------------
@@ -137,19 +137,35 @@ MEDIA_ROOT = BASE_DIR / "media"
 # ----------------------------
 CORS_ALLOWED_ORIGINS = [
     "https://tryvo.netlify.app",
-]
-CORS_ALLOWED_ORIGINS += [
+    "https://tryvobackend.onrender.com",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
 ]
+
 CSRF_TRUSTED_ORIGINS = [
     "https://tryvo.netlify.app",
+    "https://tryvobackend.onrender.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_HEADERS = ["*"]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+CORS_ALLOW_METHODS = [
+    "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+]
+
 # ----------------------------
 # REST FRAMEWORK + JWT
 # ----------------------------
