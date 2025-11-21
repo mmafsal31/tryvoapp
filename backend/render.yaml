@@ -4,7 +4,7 @@ services:
     env: python
 
     buildCommand: "bash backend/build.sh"
-    startCommand: "gunicorn wsgi:application"
+    startCommand: "gunicorn backend.wsgi:application"
 
     envVars:
       - key: PYTHON_VERSION
