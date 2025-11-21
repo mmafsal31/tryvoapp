@@ -22,7 +22,7 @@ ALLOWED_HOSTS = [
     "tryvobackend.onrender.com",
     "tryvo.netlify.app",
     "localhost",
-    "127.0.0.1"
+    "127.0.0.1800"
 ]
 
 # ----------------------------
