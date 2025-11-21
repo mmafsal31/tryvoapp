@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@500;700&display=swap');
+
+/* ✅ Define global font variables */
+:root {
+  --font-primary: 'Inter', sans-serif;
+  --font-display: 'Playfair Display', serif;
+}
+
+/* ✅ Apply global Tailwind styles */
+body {
+  @apply bg-yellow-50 text-gray-900 antialiased;
+  font-family: var(--font-primary);
+}
