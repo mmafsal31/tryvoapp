@@ -2,11 +2,13 @@ services:
   - type: web
     name: tryvobackend
     env: python
-    buildCommand: "bash build.sh"
-    startCommand: "gunicorn backend.wsgi:application"
+    buildCommand: "bash backend/build.sh"
+    startCommand: "gunicorn wsgi:application"
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.4
+      - key: DJANGO_SETTINGS_MODULE
+        value: settings
       - key: DJANGO_SECRET_KEY
         value: your-secret-key-here
       - key: DJANGO_SUPERUSER_USERNAME
