@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 set -e
 
-echo "Starting backend build for Render..."
+echo "Starting Django backend build on Render..."
 
-cd "$(dirname "$0")"
+# Go into the backend directory
+cd backend
 
+# Upgrade pip
 python -m pip install --upgrade pip
 
-pip install -r backend/requirements.txt
+# Install dependencies
+pip install -r requirements.txt
 
-python backend/manage.py migrate
+# Run migrations
+python manage.py migrate --noinput
 
-python backend/manage.py createsuperuser --noinput || true
+# Collect static files
+python manage.py collectstatic --noinput
 
-python backend/manage.py collectstatic --noinput
+# Create superuser (won't fail if exists)
+python manage.py createsuperuser --noinput || true
 
-echo "Backend build completed successfully!"
+echo "Build complete!"

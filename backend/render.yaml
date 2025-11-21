@@ -7,8 +7,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.4
-      - key: DJANGO_SETTINGS_MODULE
-        value: backend.settings
       - key: DJANGO_SECRET_KEY
         value: your-secret-key-here
       - key: DJANGO_SUPERUSER_USERNAME
@@ -17,4 +15,3 @@ services:
         value: afsal
       - key: DJANGO_SUPERUSER_EMAIL
         value: admin@example.com
-
