@@ -3,7 +3,7 @@ set -e
 
 echo "🚀 Starting backend build for Render..."
 
-cd backend
+
 
 pip install --upgrade pip
 pip install -r requirements.txt
