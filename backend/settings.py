@@ -135,11 +135,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 # CORS
 # ----------------------------
 CORS_ALLOWED_ORIGINS = [
-    "https://your-netlify-site.netlify.app",
+    "https://tryvo.netlify.app/",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://your-netlify-site.netlify.app",
+    "https://tryvo.netlify.app/",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
