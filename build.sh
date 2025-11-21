@@ -7,12 +7,12 @@ cd "$(dirname "$0")"
 
 python -m pip install --upgrade pip
 
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
-python manage.py migrate
+python backend/manage.py migrate
 
-python manage.py createsuperuser --noinput || true
+python backend/manage.py createsuperuser --noinput || true
 
-python manage.py collectstatic --noinput
+python backend/manage.py collectstatic --noinput
 
 echo "Backend build completed successfully!"
