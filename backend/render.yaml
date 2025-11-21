@@ -16,4 +16,4 @@ services:
       - key: DJANGO_SUPERUSER_PASSWORD
         value: afsal
       - key: DJANGO_SUPERUSER_EMAIL
-        value: admin@example.com
+        value: afsal@gmail.com
