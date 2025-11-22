@@ -118,7 +118,7 @@ USE_TZ = True
 # STATIC / MEDIA
 # ----------------------------
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Avoid crash if folder missing on Render
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
@@ -130,7 +130,7 @@ else:
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ----------------------------
 # CORS

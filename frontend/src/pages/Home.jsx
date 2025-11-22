@@ -16,12 +16,15 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
   const discoverRef = useRef(null);
 
-  // Helper: format image URL
+  // -------------------------------
+  // ✅ FIXED — Production Image Helper
+  // -------------------------------
+  const BASE_URL = "https://tryvobackend.onrender.com";
+
   const getImageUrl = (path) => {
     if (!path) return "/placeholder-store.png";
     if (path.startsWith("http")) return path;
-    if (path.startsWith("/media")) return `http://127.0.0.1:8000${path}`;
-    return `http://127.0.0.1:8000/media/${path}`;
+    return `${BASE_URL}${path}`;
   };
 
   // Scroll to discover section
@@ -45,6 +48,7 @@ export default function Home() {
       setLoading(true);
       const res = await API.get("products/all/");
       setProducts(res.data);
+
       const uniqueCats = [
         "all",
         ...new Set(res.data.map((p) => p.category || "Uncategorized")),
@@ -79,6 +83,7 @@ export default function Home() {
       const interval = setInterval(() => {
         setActiveBanner((prev) => (prev + 1) % ads.length);
       }, 7000);
+
       return () => clearInterval(interval);
     }
   }, [ads]);
@@ -92,7 +97,9 @@ export default function Home() {
       p.keywords?.toLowerCase().includes(query) ||
       p.category?.toLowerCase().includes(query) ||
       p.store_name?.toLowerCase().includes(query);
+
     const matchesCategory = category === "all" || p.category === category;
+
     return matchesSearch && matchesCategory;
   });
 
@@ -112,7 +119,7 @@ export default function Home() {
           <>
             {activeAd.media_type === "video" ? (
               <video
-                src={activeAd.video}
+                src={getImageUrl(activeAd.video)}
                 autoPlay
                 loop
                 muted
@@ -121,7 +128,7 @@ export default function Home() {
               />
             ) : (
               <img
-                src={activeAd.image}
+                src={getImageUrl(activeAd.image)}
                 alt={activeAd.title}
                 className="absolute inset-0 w-full h-full object-cover"
               />
@@ -239,7 +246,10 @@ export default function Home() {
       {/* 🧭 Search Results */}
       {search ? (
         <div className="p-8">
-          <h2 className="text-3xl font-extrabold mb-6 text-[#111]" style={{ fontFamily: `"Playfair Display", serif` }}>
+          <h2
+            className="text-3xl font-extrabold mb-6 text-[#111]"
+            style={{ fontFamily: `"Playfair Display", serif` }}
+          >
             Search Results
           </h2>
 
@@ -286,16 +296,20 @@ export default function Home() {
             </div>
           )}
 
-          {filteredStores.length === 0 && filteredProducts.length === 0 && (
-            <div className="flex justify-center items-center h-40">
-              <p className="text-[#5A5A5A]">No results found.</p>
-            </div>
-          )}
+          {filteredStores.length === 0 &&
+            filteredProducts.length === 0 && (
+              <div className="flex justify-center items-center h-40">
+                <p className="text-[#5A5A5A]">No results found.</p>
+              </div>
+            )}
         </div>
       ) : (
         <div className="p-8">
-          <h2 className="text-3xl font-extrabold mb-6 text-[#111]" style={{ fontFamily: `"Playfair Display", serif` }}>
-            Trending on Adovert
+          <h2
+            className="text-3xl font-extrabold mb-6 text-[#111]"
+            style={{ fontFamily: `"Playfair Display", serif` }}
+          >
+            Trending on Tryvo
           </h2>
 
           {loading ? (
@@ -339,6 +353,7 @@ export default function Home() {
                 {selectedStore.name}
               </h2>
               <p className="text-sm text-[#777] mb-2">@{selectedStore.username}</p>
+
               {selectedStore.description && (
                 <p className="text-sm text-[#555] mb-4">
                   {selectedStore.description}
@@ -350,6 +365,7 @@ export default function Home() {
               <h3 className="text-sm font-semibold text-[#111] mb-2">
                 Featured Products
               </h3>
+
               <div className="grid grid-cols-2 gap-3">
                 {products
                   .filter((p) => p.store_name === selectedStore.name)
@@ -360,12 +376,13 @@ export default function Home() {
                       className="rounded-lg overflow-hidden border border-[#EEE]"
                     >
                       <img
-                        src={p.image}
+                        src={getImageUrl(p.image)}
                         alt={p.name}
                         className="object-cover w-full h-24 hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                   ))}
+
                 {products.filter((p) => p.store_name === selectedStore.name)
                   .length === 0 && (
                   <p className="text-xs text-[#777] col-span-2 text-center">
@@ -377,7 +394,9 @@ export default function Home() {
 
             <div className="mt-6 flex justify-center">
               <button
-                onClick={() => (window.location.href = `/store/${selectedStore.id}`)}
+                onClick={() =>
+                  (window.location.href = `/store/${selectedStore.id}`)
+                }
                 className="bg-[#DDF247] hover:bg-[#c7e63f] text-black font-semibold px-6 py-2 rounded-full transition-all duration-300 shadow-md"
               >
                 Visit Store
@@ -391,7 +410,7 @@ export default function Home() {
       <footer className="text-center py-10 mt-12 text-[#5A5A5A] text-sm border-t border-[#EAEAEA]">
         <p>
           © {new Date().getFullYear()}{" "}
-          <span className="text-[#111111] font-semibold">Tryvo.</span> — Next
+          <span className="text-[#111] font-semibold">Tryvo.</span> — Next
           Generation Commerce 🌍
         </p>
       </footer>
