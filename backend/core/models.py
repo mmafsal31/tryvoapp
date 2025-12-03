@@ -17,7 +17,7 @@ class User(AbstractUser):
         return self.username
 
 
-User = settings.AUTH_USER_MODEL
+
 
 # ===============================
 # ✅ STORE & PRODUCT SYSTEM

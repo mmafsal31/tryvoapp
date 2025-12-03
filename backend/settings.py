@@ -1,29 +1,38 @@
 """
 Django settings for Tryvo Backend.
-Production-ready configuration for Render backend + React frontend.
+Production-ready configuration for Render + React frontend.
 """
 
 from pathlib import Path
 from datetime import timedelta
 import os
+import mimetypes
+
+# Ensure mp4 mime type
+mimetypes.add_type("video/mp4", ".mp4", True)
 
 # ----------------------------
-# BASE DIRECTORY
+# BASE DIRECTORY (CORRECTED)
 # ----------------------------
-BASE_DIR = Path(__file__).resolve().parent.parent  # FIXED
+# BASE_DIR = backend/
+BASE_DIR = Path(__file__).resolve().parent
+
 
 # ----------------------------
 # SECURITY
 # ----------------------------
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
-DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+
+# IMPORTANT — ENABLE DEBUG FOR LOCAL TESTING
+DEBUG = True
 
 ALLOWED_HOSTS = [
-    "tryvobackend.onrender.com",
-    "tryvo.netlify.app",
     "localhost",
     "127.0.0.1",
+    "tryvobackend.onrender.com",
+    "tryvo.netlify.app",
 ]
+
 
 # ----------------------------
 # APPLICATIONS
@@ -45,13 +54,18 @@ INSTALLED_APPS = [
     "core",
 ]
 
+
 # ----------------------------
 # MIDDLEWARE
 # ----------------------------
 MIDDLEWARE = [
+    "core.middleware.media_cors.MediaCorsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+
+    # Whitenoise for static (DO NOT SERVE MEDIA)
     "whitenoise.middleware.WhiteNoiseMiddleware",
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -60,11 +74,13 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+
 # ----------------------------
 # URLS & WSGI
 # ----------------------------
 ROOT_URLCONF = "urls"
 WSGI_APPLICATION = "wsgi.application"
+
 
 # ----------------------------
 # TEMPLATES
@@ -84,6 +100,7 @@ TEMPLATES = [
     },
 ]
 
+
 # ----------------------------
 # DATABASE
 # ----------------------------
@@ -94,9 +111,12 @@ DATABASES = {
     }
 }
 
+
 # ----------------------------
-# AUTH & PASSWORD VALIDATORS
+# AUTH
 # ----------------------------
+AUTH_USER_MODEL = "core.User"
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -104,7 +124,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-AUTH_USER_MODEL = "core.User"
 
 # ----------------------------
 # INTERNATIONALIZATION
@@ -114,33 +133,29 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+
 # ----------------------------
-# STATIC / MEDIA
+# STATIC / MEDIA (FIXED)
 # ----------------------------
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# Avoid crash if folder missing on Render
-FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
-if FRONTEND_DIST.exists():
-    STATICFILES_DIRS = [FRONTEND_DIST]
-else:
-    STATICFILES_DIRS = []
-
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# Correct media serving
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / "media"
+# BASE_DIR = backend/ so MEDIA_ROOT = backend/media
+
 
 # ----------------------------
 # CORS
 # ----------------------------
 CORS_ALLOWED_ORIGINS = [
-    "https://tryvo.netlify.app",
-    "https://tryvobackend.onrender.com",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
+    "https://tryvo.netlify.app",
+    "https://tryvobackend.onrender.com",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -162,9 +177,8 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
-CORS_ALLOW_METHODS = [
-    "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-]
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+
 
 # ----------------------------
 # REST FRAMEWORK + JWT
@@ -182,6 +196,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
 
 # ----------------------------
 # DEFAULT PRIMARY KEY
