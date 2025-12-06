@@ -18,6 +18,9 @@ from .models import (
     Attendance,
     SalaryRecord,
     BuyNowOrder,
+    StoreCategory,
+    StoreSubCategory,
+    OfferCategory,
 )
 
 User = get_user_model()
@@ -52,8 +55,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 # ======================================================
 class StoreSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")
-    logo = serializers.SerializerMethodField()
-    cover_image = serializers.SerializerMethodField()
+
+    # Make them writable!
+    logo = serializers.ImageField(required=False)
+    cover_image = serializers.ImageField(required=False)
 
     class Meta:
         model = Store
@@ -70,18 +75,17 @@ class StoreSerializer(serializers.ModelSerializer):
             "owner",
         ]
 
-    def get_logo(self, obj):
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
         request = self.context.get("request")
-        if obj.logo and request:
-            return request.build_absolute_uri(obj.logo.url)
-        return None
 
-    def get_cover_image(self, obj):
-        request = self.context.get("request")
-        if obj.cover_image and request:
-            return request.build_absolute_uri(obj.cover_image.url)
-        return None
+        if instance.logo:
+            rep["logo"] = request.build_absolute_uri(instance.logo.url)
 
+        if instance.cover_image:
+            rep["cover_image"] = request.build_absolute_uri(instance.cover_image.url)
+
+        return rep
 
 # ======================================================
 # 📏 PRODUCT SIZE
@@ -112,12 +116,50 @@ class ProductImageSerializer(serializers.ModelSerializer):
 # ======================================================
 # 🛍 PRODUCT SERIALIZER (FIXED)
 # ======================================================
+# 🛍 PRODUCT SERIALIZER (FULLY FIXED)
+# ======================================================
+# ======================================================
+# 🛍 UPDATED PRODUCT SERIALIZER (FINAL WORKING VERSION)
+# ======================================================
 class ProductSerializer(serializers.ModelSerializer):
+
+    # Read-only store details
     store_id = serializers.IntegerField(source="store.id", read_only=True)
     store_name = serializers.CharField(source="store.store_name", read_only=True)
-    sizes = ProductSizeSerializer(many=True, required=False)
-    images = ProductImageSerializer(many=True, required=False)
-    main_image = serializers.ImageField(required=False, allow_null=True)
+
+    # Read-only category names
+    store_category = serializers.CharField(source="store_category.name", read_only=True)
+    store_subcategory = serializers.CharField(source="store_subcategory.name", read_only=True)
+    offer_category = serializers.CharField(source="offer_category.title", read_only=True)
+
+    # Write-only IDs for assignment
+    store_category_id = serializers.PrimaryKeyRelatedField(
+        queryset=StoreCategory.objects.all(),
+        source="store_category",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    store_subcategory_id = serializers.PrimaryKeyRelatedField(
+        queryset=StoreSubCategory.objects.all(),
+        source="store_subcategory",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    offer_category_id = serializers.PrimaryKeyRelatedField(
+        queryset=OfferCategory.objects.all(),
+        source="offer_category",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+
+    sizes = ProductSizeSerializer(many=True, read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
+
+    main_image = serializers.ImageField(required=False)
+
     average_price = serializers.SerializerMethodField()
 
     class Meta:
@@ -126,84 +168,220 @@ class ProductSerializer(serializers.ModelSerializer):
             "id",
             "store_id",
             "store_name",
+
+            # Read category labels
+            "store_category",
+            "store_subcategory",
+            "offer_category",
+
+            # Write category IDs
+            "store_category_id",
+            "store_subcategory_id",
+            "offer_category_id",
+
+            # Product info
             "name",
-            "category",
             "description",
             "main_image",
             "keywords",
+
+            # Pricing & stock
             "average_price",
             "sizes",
             "images",
+
             "created_at",
         ]
 
+    # ----------------------------------------------------
+    # GET FIRST SIZE PRICE
+    # ----------------------------------------------------
     def get_average_price(self, obj):
-        first_size = obj.sizes.first()
-        return first_size.price if first_size else None
+        first = obj.sizes.first()
+        return first.price if first else None
 
+    # ----------------------------------------------------
+    # CREATE PRODUCT (FormData + JSON sizes + images)
+    # ----------------------------------------------------
+    def create(self, validated_data):
+        request = self.context["request"]
+
+        # Extract sizes JSON coming from FormData
+        sizes_json = request.data.get("sizes")
+        sizes = json.loads(sizes_json) if sizes_json else []
+
+        # Create Product
+        product = Product.objects.create(**validated_data)
+
+        # ---- SAVE SIZES ----
+        for size in sizes:
+            ProductSize.objects.create(
+                product=product,
+                size_label=size["size_label"],
+                price=size["price"],
+                quantity=size["quantity"],
+            )
+
+        # ---- SAVE GALLERY IMAGES ----
+        for img in request.FILES.getlist("images"):
+            ProductImage.objects.create(product=product, image=img)
+
+        return product
+
+    # ----------------------------------------------------
+    # UPDATE PRODUCT
+    # ----------------------------------------------------
+    def update(self, instance, validated_data):
+        request = self.context["request"]
+
+        # Update basic fields
+        for field in ["name", "description", "keywords",
+                      "store_category", "store_subcategory", "offer_category"]:
+            if field in validated_data:
+                setattr(instance, field, validated_data[field])
+
+        # Replace main image if uploaded
+        if "main_image" in request.FILES:
+            instance.main_image = request.FILES["main_image"]
+
+        instance.save()
+
+        # ---- UPDATE SIZES ----
+        sizes_json = request.data.get("sizes")
+        sizes = json.loads(sizes_json) if sizes_json else []
+
+        # Delete old sizes
+        ProductSize.objects.filter(product=instance).delete()
+
+        # Insert new sizes
+        for size in sizes:
+            ProductSize.objects.create(
+                product=instance,
+                size_label=size["size_label"],
+                price=size["price"],
+                quantity=size["quantity"],
+            )
+
+        # ---- APPEND NEW IMAGES ----
+        for img in request.FILES.getlist("images"):
+            ProductImage.objects.create(product=instance, image=img)
+
+        return instance
+
+    # ----------------------------------------------------
+    # FULL URL FOR main_image
+    # ----------------------------------------------------
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         request = self.context.get("request")
 
-        if request and instance.main_image:
+        if instance.main_image:
             rep["main_image"] = request.build_absolute_uri(instance.main_image.url)
 
         return rep
 
+
+    # -------------------------------------------------
+    # Return full URL for main_image
+    # -------------------------------------------------
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get("request")
+
+        if instance.main_image:
+            rep["main_image"] = request.build_absolute_uri(instance.main_image.url)
+
+        return rep
+
+
+class StoreCategorySerializer(serializers.ModelSerializer):
+    dp_image = serializers.ImageField(required=False)
+
+    class Meta:
+        model = StoreCategory
+        fields = ["id", "name", "dp_image", "created_at"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+
+        if instance.dp_image:
+            data["dp_image"] = request.build_absolute_uri(instance.dp_image.url)
+
+        return data
+
     def create(self, validated_data):
         request = self.context.get("request")
-        sizes_data = validated_data.pop("sizes", [])
-        images_data = validated_data.pop("images", [])
+        validated_data["store"] = request.user.store
+        return super().create(validated_data)
 
-        # Convert JSON string → dict
-        raw_sizes = request.data.get("sizes")
-        if isinstance(raw_sizes, str):
-            try:
-                sizes_data = json.loads(raw_sizes)
-            except:
-                sizes_data = []
 
-        product = Product.objects.create(**validated_data)
+class StoreSubCategorySerializer(serializers.ModelSerializer):
+    dp_image_url = serializers.SerializerMethodField()
 
-        for size in sizes_data:
-            ProductSize.objects.create(product=product, **size)
+    class Meta:
+        model = StoreSubCategory
+        fields = ["id", "category", "name", "dp_image", "dp_image_url"]
+        extra_kwargs = {
+            "category": {"required": False},
+        }
 
-        for img in images_data:
-            ProductImage.objects.create(product=product, **img)
+    def create(self, validated_data):
+        request = self.context.get("request")
 
-        return product
+        category_id = request.data.get("category")
+        if not category_id:
+            raise serializers.ValidationError({"category": "Category ID required"})
+
+        try:
+            category = StoreCategory.objects.get(id=category_id, store=request.user.store)
+        except StoreCategory.DoesNotExist:
+            raise serializers.ValidationError({"category": "Invalid category"})
+
+        validated_data["category"] = category
+        return StoreSubCategory.objects.create(**validated_data)
+
+    def get_dp_image_url(self, obj):
+        request = self.context.get("request")
+        if obj.dp_image:
+            return request.build_absolute_uri(obj.dp_image.url)
+        return None
+
+class OfferCategorySerializer(serializers.ModelSerializer):
+    banner_image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OfferCategory
+        fields = [
+            "id",
+            "store",
+            "title",
+            "start_date",
+            "end_date",
+            "banner_image",
+            "banner_image_url",
+            "created_at",
+        ]
+        extra_kwargs = {
+            "store": {"required": False},
+        }
+
+    def create(self, validated_data):
+        """
+        The view already attaches store = request.user.store
+        So do NOT fetch again using Store.objects.get(owner=...)
+        That caused 500 error.
+        """
+        return OfferCategory.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
+
+    def get_banner_image_url(self, obj):
         request = self.context.get("request")
-        sizes_data = validated_data.pop("sizes", [])
-        images_data = validated_data.pop("images", [])
-
-        # JSON handling
-        raw_sizes = request.data.get("sizes")
-        if isinstance(raw_sizes, str):
-            try:
-                sizes_data = json.loads(raw_sizes)
-            except:
-                sizes_data = []
-
-        # Update main fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        # Replace sizes
-        if sizes_data:
-            instance.sizes.all().delete()
-            for size in sizes_data:
-                ProductSize.objects.create(product=instance, **size)
-
-        # Replace images
-        if images_data:
-            instance.images.all().delete()
-            for img in images_data:
-                ProductImage.objects.create(product=instance, **img)
-
-        return instance
+        if obj.banner_image:
+            return request.build_absolute_uri(obj.banner_image.url)
+        return None
 
 
 # ======================================================
@@ -215,9 +393,14 @@ class ReservationSerializer(serializers.ModelSerializer):
 
     product_name = serializers.CharField(source="product.name", read_only=True)
     product_image = serializers.SerializerMethodField()
-    category = serializers.CharField(source="product.category", read_only=True)
+
+    category = serializers.CharField(source="product.store_category.name", read_only=True)
+    subcategory = serializers.CharField(source="product.store_subcategory.name", read_only=True)
+    offer = serializers.CharField(source="product.offer_category.title", read_only=True)
+
     size_label = serializers.CharField(source="size.size_label", read_only=True)
     price = serializers.DecimalField(source="size.price", max_digits=10, decimal_places=2, read_only=True)
+
     customer_name = serializers.CharField(source="customer.username", read_only=True)
 
     class Meta:
@@ -227,7 +410,11 @@ class ReservationSerializer(serializers.ModelSerializer):
             "product",
             "product_name",
             "product_image",
+
             "category",
+            "subcategory",
+            "offer",
+
             "size",
             "size_label",
             "price",
@@ -246,6 +433,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         if obj.product.main_image:
             return request.build_absolute_uri(obj.product.main_image.url)
         return None
+
 
 
 # ======================================================
@@ -461,6 +649,9 @@ class SalaryRecordSerializer(serializers.ModelSerializer):
 class BuyNowOrderSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
     size_label = serializers.CharField(source="size.size_label", read_only=True)
+    product_main_image = serializers.SerializerMethodField()
+
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = BuyNowOrder
@@ -476,8 +667,16 @@ class BuyNowOrderSerializer(serializers.ModelSerializer):
             "country",
             "size",
             "quantity",
-            "total_price",
+            "total_price",  # MUST BE READ-ONLY
             "product_name",
             "size_label",
+            "product_main_image",
+            "status",
             "created_at",
         ]
+
+    def get_product_main_image(self, obj):
+        request = self.context.get("request")
+        if obj.product.main_image:
+            return request.build_absolute_uri(obj.product.main_image.url)
+        return None

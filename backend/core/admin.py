@@ -8,6 +8,9 @@ from .models import (
     Reservation,
     Sale,
     Advertisement,
+    StoreCategory,
+    StoreSubCategory,
+    OfferCategory,
  
 )
 
@@ -44,9 +47,25 @@ class ProductSizeInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name", "store", "category", "preview_image", "created_at")
-    list_filter = ("category", "store")
+    list_display = (
+        "name",
+        "store",
+        "store_category",
+        "store_subcategory",
+        "offer_category",
+        "preview_image",
+        "created_at",
+    )
+
+    list_filter = (
+        "store",
+        "store_category",
+        "store_subcategory",
+        "offer_category",
+    )
+
     search_fields = ("name", "keywords", "store__store_name")
+
     inlines = [ProductSizeInline]
     ordering = ("-created_at",)
     list_per_page = 25
@@ -61,6 +80,75 @@ class ProductAdmin(admin.ModelAdmin):
 
     preview_image.short_description = "Preview"
 
+@admin.register(StoreCategory)
+class StoreCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "store", "created_at")
+    list_filter = ("store",)
+    search_fields = ("name", "store__store_name")
+    ordering = ("name",)
+
+    # Restrict to owner’s store only
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        if hasattr(request.user, "store"):
+            return qs.filter(store=request.user.store)
+        return qs.none()
+
+    # Auto-assign store (store owner can't choose other stores)
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "store" and hasattr(request.user, "store"):
+            kwargs["queryset"] = Store.objects.filter(owner=request.user)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
+@admin.register(StoreSubCategory)
+class StoreSubCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "category", "store_name", "created_at")
+    list_filter = ("category__store", "category")
+    search_fields = ("name", "category__name")
+    ordering = ("name",)
+
+    def store_name(self, obj):
+        return obj.category.store.store_name
+    store_name.short_description = "Store"
+
+    # Restrict to owner only
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        if hasattr(request.user, "store"):
+            return qs.filter(category__store=request.user.store)
+        return qs.none()
+
+    # Only show categories of logged-in store owner
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "category" and hasattr(request.user, "store"):
+            kwargs["queryset"] = StoreCategory.objects.filter(store=request.user.store)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+@admin.register(OfferCategory)
+class OfferCategoryAdmin(admin.ModelAdmin):
+    list_display = ("title", "store", "start_date", "end_date", "is_active", "created_at")
+    list_filter = ("store",)
+    search_fields = ("title", "store__store_name")
+    ordering = ("-start_date",)
+
+    # Restrict to owner's data
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        if hasattr(request.user, "store"):
+            return qs.filter(store=request.user.store)
+        return qs.none()
+
+    # Only allow assigning owner’s store
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "store" and hasattr(request.user, "store"):
+            kwargs["queryset"] = Store.objects.filter(owner=request.user)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 # -----------------------
 # RESERVATION MANAGEMENT

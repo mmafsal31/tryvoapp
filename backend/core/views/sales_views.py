@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from core.models import (
     Sale, ProductSize, Reservation, CustomerCredit, Return, Store, Product, generate_invoice_no
 )
-
+from core.serializers import ProductSerializer
 # -------------------------------
 # GET CUSTOMER INFO
 # -------------------------------
@@ -43,24 +43,15 @@ def get_customer_info(request):
 
 
 # -------------------------------
-# CREATE SALE
+# CREATE SALE (FIXED)
 # -------------------------------
-from decimal import Decimal
-from django.db import transaction
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework import permissions, status
-from rest_framework.response import Response
-
-from core.models import Sale, Reservation, ProductSize, CustomerCredit
-
-
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
 @transaction.atomic
 def create_sale(request):
     """
     Handles sale creation, reservation linkage, credit settlement, and stock deduction.
-    Works for both direct store checkout and reservation checkout.
+    Includes FIXED PRODUCT NORMALIZATION so analytics shows correct item names.
     """
     print("=== 🧾 DEBUG: POS Checkout Payload ===")
     print(request.data)
@@ -92,7 +83,9 @@ def create_sale(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ✅ STOCK CHECK & DEDUCTION
+        # ------------------------------------------
+        # STOCK VALIDATION
+        # ------------------------------------------
         product_ids = [item.get("id") or item.get("product_id") for item in cart]
         size_objs = ProductSize.objects.filter(product_id__in=product_ids)
         size_map = {(s.product_id, s.size_label): s for s in size_objs}
@@ -124,30 +117,59 @@ def create_sale(request):
             size_obj.quantity -= qty
             size_obj.save()
 
-        # ✅ RESERVATION LINKING
+        # ------------------------------------------
+        # RESERVATION
+        # ------------------------------------------
         reservation = None
         if reservation_id:
             try:
                 reservation = Reservation.objects.get(id=reservation_id)
-                # Ensure reservation belongs to this store
+
                 if reservation.product.store != store:
                     return Response(
                         {"success": False, "message": "Reservation does not belong to this store."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-                # Mark reservation as completed
+
                 reservation.status = "completed"
                 reservation.save()
+
             except Reservation.DoesNotExist:
                 return Response(
                     {"success": False, "message": "Invalid reservation ID."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # ✅ SALE CREATION
+        # ------------------------------------------
+        # 🔥 FIXED PART — Normalize product data
+        # ------------------------------------------
+        fixed_products = []
+
+        for item in cart:
+            product_id = item.get("product_id") or item.get("id")
+            size_label = item.get("size_label") or (
+                item.get("sizes", [{}])[0].get("size_label") if item.get("sizes") else None
+            )
+            qty = int(item.get("quantity", 1))
+
+            # Fetch real DB objects
+            product_obj = Product.objects.filter(id=product_id).first()
+            size_obj = ProductSize.objects.filter(product_id=product_id, size_label=size_label).first()
+
+            fixed_products.append({
+                "product_id": product_id,
+                "product": product_obj.name if product_obj else "Unknown Product",
+                "size": size_label or "",
+                "price": str(size_obj.price) if size_obj else "0",
+                "quantity": qty,
+            })
+
+        # ------------------------------------------
+        # CREATE SALE WITH FIXED PRODUCT LIST
+        # ------------------------------------------
         sale = Sale.objects.create(
             store=store,
-            products=cart,
+            products=fixed_products,  # ← Fixed here
             subtotal=subtotal,
             discount=discount,
             total_amount=total,
@@ -157,13 +179,14 @@ def create_sale(request):
             reservation=reservation,
         )
 
-        # ✅ PAYMENT LOGIC
+        # ------------------------------------------
+        # PAYMENT LOGIC
+        # ------------------------------------------
         paid = Decimal(str(payment.get("paid_amount", 0)))
         credit = Decimal(str(payment.get("credit_amount", 0)))
         settle_amount = Decimal(str(payment.get("settle_credit_amount", 0) or 0))
         customer_phone = customer.get("phone")
 
-        # Handle new credit sales
         if credit > 0:
             sale.is_credit = True
             sale.credit_amount = credit
@@ -177,11 +200,12 @@ def create_sale(request):
                 reference_sale=sale,
             )
 
-        # Handle credit settlement (if paying back old debts)
+        # Credit settlement logic
         if settle_amount > 0 and customer_phone:
             credits = CustomerCredit.objects.filter(
                 store=store, customer_phone=customer_phone
             ).order_by("-created_at")
+
             remaining = settle_amount
             for credit_entry in credits:
                 if remaining <= 0:
@@ -208,11 +232,11 @@ def create_sale(request):
         )
 
     except Exception as e:
-        # Roll back automatically handled by @transaction.atomic
         return Response(
             {"success": False, "message": f"Error: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
 
 # -------------------------------
 # PROCESS RETURN
@@ -256,13 +280,12 @@ def process_return(request):
 
 
 # -------------------------------
-# SETTLE CREDIT (Manual endpoint)
+# SETTLE CREDIT
 # -------------------------------
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
 @transaction.atomic
 def settle_credit(request):
-    """Manually deduct a settled amount from a customer's outstanding credit"""
     user = request.user
     store = getattr(user, "store", None)
     if not store:
@@ -309,14 +332,12 @@ def settle_credit(request):
     except Exception as e:
         return Response({"success": False, "message": str(e)}, status=500)
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework.response import Response
-from core.models import Product
-from core.serializers import ProductSerializer
 
+# -------------------------------
+# PUBLIC PRODUCT DETAIL
+# -------------------------------
 @api_view(["GET"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([permissions.IsAuthenticatedOrReadOnly])
 def product_detail(request, pk):
     try:
         product = Product.objects.select_related("store").get(pk=pk)
@@ -326,32 +347,18 @@ def product_detail(request, pk):
     serializer = ProductSerializer(product)
     data = serializer.data
 
-    # ✅ Add store info
     data["store_name"] = product.store.store_name if product.store else None
     data["store_id"] = product.store.id if product.store else None
 
     return Response(data)
 
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-from core.models import ProductSize
-
+# -------------------------------
+# UPDATE STOCK AFTER SALE
+# -------------------------------
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated])
 def update_stock_after_sale(request):
-    """
-    Reduce stock quantities after a successful sale.
-    Payload example:
-    {
-        "items": [
-            {"size_id": 12, "quantity": 2},
-            {"size_id": 15, "quantity": 1}
-        ]
-    }
-    """
     try:
         items = request.data.get("items", [])
         for item in items:

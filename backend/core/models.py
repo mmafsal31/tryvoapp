@@ -65,21 +65,111 @@ class Store(models.Model):
 
     def __str__(self):
         return self.store_name
+class StoreCategory(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="categories")
+    name = models.CharField(max_length=100)
+    dp_image = models.ImageField(upload_to="categories/dp/", null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("store", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.store.store_name})"
+
+
+class StoreSubCategory(models.Model):
+    category = models.ForeignKey(StoreCategory, on_delete=models.CASCADE, related_name="subcategories")
+    name = models.CharField(max_length=100)
+    dp_image = models.ImageField(upload_to="subcategories/dp/", null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("category", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.category.name} → {self.name}"
+
+class OfferCategory(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="offer_categories")
+    title = models.CharField(max_length=150)
+
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+
+    banner_image = models.ImageField(upload_to="offers/banners/", blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_active(self):
+        now = timezone.now()
+        return self.start_date <= now <= self.end_date
+
+    class Meta:
+        ordering = ["-start_date"]
+
+    def __str__(self):
+        return f"{self.title} ({self.store.store_name})"
 
 
 class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="products")
+
+    # New category fields
+    store_category = models.ForeignKey(
+        StoreCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products"
+    )
+
+    store_subcategory = models.ForeignKey(
+        StoreSubCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products"
+    )
+
+    offer_category = models.ForeignKey(
+        OfferCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products",
+        help_text="If selected, product will show under this active offer category."
+    )
+
+    # Existing fields
     name = models.CharField(max_length=150)
-    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
     description = models.TextField(blank=True, null=True)
     main_image = models.ImageField(upload_to="products/main/", blank=True, null=True)
+
     keywords = models.CharField(
-        max_length=250, blank=True, help_text="Comma-separated keywords for search"
+        max_length=250,
+        blank=True,
+        help_text="Comma-separated keywords for search"
     )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.name} ({self.store.store_name})"
+
+    def clean(self):
+        # Prevent category mismatches
+        if self.store_subcategory and self.store_subcategory.category.store != self.store:
+            raise ValidationError("Subcategory does not belong to this store.")
+        if self.store_category and self.store_category.store != self.store:
+            raise ValidationError("Category does not belong to this store.")
+        if self.offer_category and self.offer_category.store != self.store:
+            raise ValidationError("Offer category does not belong to this store.")
 
 
 class ProductImage(models.Model):
@@ -110,13 +200,12 @@ class Reservation(models.Model):
     unique_code = models.CharField(max_length=6, unique=True, editable=False)
     reserved_until = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
-    store = models.ForeignKey(
-        "Store",
-        on_delete=models.CASCADE,
-        related_name="reservations",
-        null=True,
-        blank=True
-    )
+    store = models.ForeignKey("Store", on_delete=models.CASCADE, related_name="reservations", null=True, blank=True)
+
+    # ⭐ ADD THESE FIELDS ⭐
+    customer_name = models.CharField(max_length=255, blank=True, null=True)
+    customer_phone = models.CharField(max_length=20, blank=True, null=True)
+
     def save(self, *args, **kwargs):
         if not self.unique_code:
             self.unique_code = str(uuid.uuid4().int)[:4]
@@ -127,7 +216,6 @@ class Reservation(models.Model):
 
     def __str__(self):
         return f"Reservation {self.unique_code} - {self.customer.username}"
-
 
 
 from django.db import models
