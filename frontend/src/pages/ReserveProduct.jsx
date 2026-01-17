@@ -92,7 +92,7 @@ export default function ReserveProduct() {
             <p className="text-3xl font-bold text-yellow-600">{reservationCode}</p>
           </div>
           <button
-            onClick={() => navigate("/reservations")}
+            onClick={() => navigate("/profile")}
             className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-semibold"
           >
             View My Reservations

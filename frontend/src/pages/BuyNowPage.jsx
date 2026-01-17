@@ -2,11 +2,14 @@
 import React, { useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import API from "../api/axios";
+import { getAuth } from "../utils/auth";
 import { toast } from "react-toastify";
 
 export default function BuyNowPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const auth = getAuth();
+
   const { selectedSize, quantity = 1 } = state || {};
 
   const [form, setForm] = useState({
@@ -20,7 +23,7 @@ export default function BuyNowPage() {
     country: "India",
   });
 
-  // ✅ Calculate total dynamically
+  // Calculate total dynamically
   const totalPrice = useMemo(() => {
     if (!selectedSize?.price) return 0;
     return (selectedSize.price * quantity).toFixed(2);
@@ -45,12 +48,15 @@ export default function BuyNowPage() {
         quantity,
       };
 
-      await API.post("buy-now-orders/", payload);
+      await API.post("/buy-now-orders/", payload, {
+        headers: { Authorization: `Bearer ${auth.access}` },
+      });
+
       toast.success("Order placed successfully!");
       navigate("/");
     } catch (error) {
-      console.error("Buy Now Error:", error);
-      toast.error("Failed to place order. Please try again.");
+      console.error("Buy Now Error:", error.response?.data);
+      toast.error(error.response?.data?.error || "Failed to place order.");
     }
   };
 
@@ -58,37 +64,52 @@ export default function BuyNowPage() {
     <div className="max-w-xl mx-auto bg-white p-8 mt-8 rounded-2xl shadow-lg">
       <h2 className="text-2xl font-bold mb-6">Checkout — Buy Now</h2>
 
-      {/* ✅ Order Summary Section */}
+      {/* Order Summary */}
       <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl mb-6">
         <h3 className="text-lg font-semibold mb-2">Order Summary</h3>
+
         {selectedSize ? (
           <div className="text-gray-700 space-y-1">
             <p>
               <span className="font-medium">Product:</span>{" "}
-              {selectedSize.product_name || selectedSize.product?.name || "Product"}
+              {selectedSize.product_name ||
+                selectedSize.product?.name ||
+                "Product"}
             </p>
+
             <p>
-              <span className="font-medium">Size:</span> {selectedSize.size_label}
+              <span className="font-medium">Size:</span>{" "}
+              {selectedSize.size_label}
             </p>
+
             <p>
-              <span className="font-medium">Price per unit:</span> ₹{selectedSize.price}
+              <span className="font-medium">Price (unit):</span> ₹
+              {selectedSize.price}
             </p>
+
             <p>
               <span className="font-medium">Quantity:</span> {quantity}
             </p>
+
             <hr className="my-2" />
-            <p className="text-lg font-bold">
-              Total: ₹{totalPrice}
-            </p>
+
+            <p className="text-lg font-bold">Total: ₹{totalPrice}</p>
           </div>
         ) : (
           <p className="text-gray-500 italic">No product selected.</p>
         )}
       </div>
 
-      {/* ✅ Checkout Form */}
+      {/* Checkout Form */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {["customer_name", "phone", "address", "pincode", "landmark", "district"].map((f) => (
+        {[
+          "customer_name",
+          "phone",
+          "address",
+          "pincode",
+          "landmark",
+          "district",
+        ].map((f) => (
           <input
             key={f}
             type="text"
@@ -109,6 +130,7 @@ export default function BuyNowPage() {
             onChange={handleChange}
             className="border p-3 rounded-lg"
           />
+
           <input
             type="text"
             name="country"

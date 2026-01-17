@@ -1,198 +1,281 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import API from "../api/axios";
-import { getAuth } from "../utils/auth";
+import { toast } from "react-toastify";
 
 export default function EditProduct() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const auth = getAuth();
-  
 
   const [loading, setLoading] = useState(true);
-  const [product, setProduct] = useState(null);
+
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [keywords, setKeywords] = useState("");
+
   const [mainImage, setMainImage] = useState(null);
+  const [mainPreview, setMainPreview] = useState(null);
+
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [galleryPreview, setGalleryPreview] = useState([]);
+
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [offerCategories, setOfferCategories] = useState([]);
+
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [selectedOfferCategory, setSelectedOfferCategory] = useState("");
+
   const [sizes, setSizes] = useState([]);
 
-  // ✅ Fetch existing product data
+  // -----------------------------------------
+  // Load product details + categories
+  // -----------------------------------------
   useEffect(() => {
-    const fetchProduct = async () => {
+    async function loadAll() {
       try {
-        const res = await API.get(`products/${id}/`, {
-          headers: { Authorization: `Bearer ${auth.access}` },
-        });
-        const data = res.data;
-        setProduct(data);
-        setName(data.name);
-        setCategory(data.category);
-        setDescription(data.description || "");
-        setKeywords(data.keywords || "");
-        setSizes(data.sizes || []);
+        const [prod, cats, offers] = await Promise.all([
+          API.get(`/products/${id}/`),
+          API.get("/stores/categories/"),
+          API.get("/stores/offer-categories/"),
+        ]);
+
+        const p = prod.data;
+
+        setName(p.name);
+        setDescription(p.description || "");
+        setKeywords(p.keywords || "");
+
+        setMainPreview(p.main_image || null);
+
+        // Sizes
+        setSizes(p.sizes || []);
+
+        // Preselect category/subcategory/offer
+        setSelectedCategory(p.store_category_id || "");
+        setSelectedSubcategory(p.store_subcategory_id || "");
+        setSelectedOfferCategory(p.offer_category_id || "");
+
+        setCategories(cats.data);
+        setOfferCategories(offers.data);
+
+        // Load subcategories after category selection
+        if (p.store_category_id) {
+          const s = await API.get(`/stores/subcategories/${p.store_category_id}/`);
+          setSubcategories(s.data);
+        }
       } catch (err) {
-        console.error("Error fetching product:", err);
-        alert("Failed to load product details.");
+        console.error(err);
+        toast.error("Failed to load product");
         navigate("/store/dashboard");
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    fetchProduct();
-  }, [id, navigate, auth.access]);
+    loadAll();
+  }, [id, navigate]);
 
-  // ✅ Handle size change
-  const handleSizeChange = (index, field, value) => {
-    const newSizes = [...sizes];
-    newSizes[index][field] = value;
-    setSizes(newSizes);
-  };
-
-  const addSizeField = () => {
-    setSizes([...sizes, { size_label: "", price: "", quantity: "" }]);
-  };
-
-  // ✅ Handle form submit (update)
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("category", category);
-    formData.append("description", description);
-    formData.append("keywords", keywords);
-    formData.append("sizes", JSON.stringify(sizes));
-    if (mainImage) formData.append("main_image", mainImage);
+  // -----------------------------------------
+  // Category change → load subcategories
+  // -----------------------------------------
+  const handleCategoryChange = async (id) => {
+    setSelectedCategory(id);
+    setSelectedSubcategory("");
 
     try {
-      await API.patch(`products/${id}/`, formData, {
-        headers: {
-          Authorization: `Bearer ${auth.access}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      alert("✅ Product updated successfully!");
-      navigate("/store/dashboard");
-    } catch (err) {
-      console.error("Error updating product:", err);
-      alert("Failed to update the product. Please try again.");
+      if (!id) return setSubcategories([]);
+
+      const res = await API.get(`/stores/subcategories/${id}/`);
+      setSubcategories(res.data);
+    } catch {
+      toast.error("Failed to load subcategories");
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-80 text-yellow-600 font-semibold">
-        Loading product details...
-      </div>
-    );
-  }
+  // -----------------------------------------
+  // Main image preview
+  // -----------------------------------------
+  const handleMainImage = (e) => {
+    const file = e.target.files[0];
+    setMainImage(file);
+    setMainPreview(URL.createObjectURL(file));
+  };
+
+  // -----------------------------------------
+  // Gallery images preview
+  // -----------------------------------------
+  const handleGalleryImages = (e) => {
+    const files = [...e.target.files];
+    setGalleryImages(files);
+    setGalleryPreview(files.map((f) => URL.createObjectURL(f)));
+  };
+
+  // -----------------------------------------
+  // Size system
+  // -----------------------------------------
+  const addSize = () =>
+    setSizes([...sizes, { size_label: "", price: "", quantity: "" }]);
+
+  const updateSize = (index, field, value) => {
+    const updated = [...sizes];
+    updated[index][field] = value;
+    setSizes(updated);
+  };
+
+  const removeSize = (index) =>
+    setSizes(sizes.filter((_, i) => i !== index));
+
+  // -----------------------------------------
+  // Submit update
+  // -----------------------------------------
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+
+    const fd = new FormData();
+    fd.append("name", name);
+    fd.append("description", description);
+    fd.append("keywords", keywords);
+
+    if (mainImage) fd.append("main_image", mainImage);
+
+    if (selectedCategory) fd.append("store_category_id", selectedCategory);
+    if (selectedSubcategory) fd.append("store_subcategory_id", selectedSubcategory);
+    if (selectedOfferCategory) fd.append("offer_category_id", selectedOfferCategory);
+
+    fd.append("sizes", JSON.stringify(sizes));
+
+    galleryImages.forEach((img) => fd.append("images", img));
+
+    try {
+      await API.patch(`/products/${id}/`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      toast.success("Product updated!");
+      navigate("/store/dashboard");
+    } catch (err) {
+      console.log("Update error:", err.response?.data);
+      toast.error("Failed to update product");
+    }
+  };
+
+  if (loading) return <p className="text-center py-10">Loading...</p>;
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-xl shadow">
-      <h2 className="text-2xl font-bold text-yellow-600 mb-6">
-        Edit Product – {product?.name}
-      </h2>
-      <form onSubmit={handleUpdate} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Product Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full border p-2 rounded"
-          required
-        />
+    <div className="add-product-container">
+      <style>{`
+        .add-product-container {
+          max-width: 700px;
+          margin: auto;
+          background: white;
+          padding: 24px;
+          border-radius: 10px;
+        }
+        label { font-weight: 600; margin-top: 15px; display: block; }
+        input,select,textarea {
+          width: 100%; 
+          padding: 10px;
+          margin-top: 6px;
+          border-radius: 8px;
+          border: 1px solid #ccc;
+        }
+        .size-row { display:flex; gap:10px; margin-top:10px; }
+        .submit-btn { background:black; color:white; padding:10px; margin-top:20px; width:100%; }
+        .preview-main { width: 180px; margin-top: 10px; border-radius: 6px; }
+        .gallery-preview { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+        .preview-thumb { width:90px; height:90px; border-radius:6px; object-fit:cover; border:1px solid #ccc; }
+      `}</style>
+
+      <h2>Edit Product</h2>
+
+      <form onSubmit={handleUpdate}>
+
+        <label>Product Name</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} />
+
+        <label>Description</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+
+        <label>Keywords</label>
+        <input value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+
+        <label>Main Image</label>
+        <input type="file" onChange={handleMainImage} />
+        {mainPreview && <img src={mainPreview} className="preview-main" />}
+
+        <label>Category</label>
         <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full border p-2 rounded"
+          value={selectedCategory}
+          onChange={(e) => handleCategoryChange(e.target.value)}
         >
-          <option value="clothing">Clothing</option>
-          <option value="footwear">Footwear</option>
+          <option value="">-- Select --</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
         </select>
-        <textarea
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full border p-2 rounded"
-        />
-        <input
-          type="text"
-          placeholder="Keywords (comma separated)"
-          value={keywords}
-          onChange={(e) => setKeywords(e.target.value)}
-          className="w-full border p-2 rounded"
-        />
 
-        <div>
-          <p className="font-medium mb-1 text-gray-700">Current Image:</p>
-          {product?.main_image ? (
-            <img
-              src={product.main_image}
-              alt={product.name}
-              className="h-40 w-full object-cover rounded-md mb-2"
-            />
-          ) : (
-            <div className="h-40 bg-gray-100 flex items-center justify-center rounded-md text-gray-400 text-sm">
-              No Image
-            </div>
-          )}
-          <input
-            type="file"
-            onChange={(e) => setMainImage(e.target.files[0])}
-            className="w-full border p-2 rounded"
-          />
-        </div>
+        <label>Subcategory</label>
+        <select
+          value={selectedSubcategory}
+          onChange={(e) => setSelectedSubcategory(e.target.value)}
+        >
+          <option value="">-- Select --</option>
+          {subcategories.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
 
-        <div>
-          <h3 className="font-semibold mb-2">Sizes</h3>
-          {sizes.map((size, index) => (
-            <div key={index} className="flex gap-2 mb-2">
+        <label>Offer Category</label>
+        <select
+          value={selectedOfferCategory}
+          onChange={(e) => setSelectedOfferCategory(e.target.value)}
+        >
+          <option value="">-- No offer --</option>
+          {offerCategories.map((o) => (
+            <option key={o.id} value={o.id}>{o.title}</option>
+          ))}
+        </select>
+
+        <div className="sizes-section">
+          <h3>Sizes</h3>
+          <button type="button" onClick={addSize}>+ Add Size</button>
+
+          {sizes.map((size, i) => (
+            <div className="size-row" key={i}>
               <input
-                type="text"
                 placeholder="Size"
                 value={size.size_label}
-                onChange={(e) =>
-                  handleSizeChange(index, "size_label", e.target.value)
-                }
-                className="border p-2 flex-1 rounded"
+                onChange={(e) => updateSize(i, "size_label", e.target.value)}
               />
               <input
-                type="number"
                 placeholder="Price"
+                type="number"
                 value={size.price}
-                onChange={(e) =>
-                  handleSizeChange(index, "price", e.target.value)
-                }
-                className="border p-2 flex-1 rounded"
+                onChange={(e) => updateSize(i, "price", e.target.value)}
               />
               <input
+                placeholder="Qty"
                 type="number"
-                placeholder="Quantity"
                 value={size.quantity}
-                onChange={(e) =>
-                  handleSizeChange(index, "quantity", e.target.value)
-                }
-                className="border p-2 flex-1 rounded"
+                onChange={(e) => updateSize(i, "quantity", e.target.value)}
               />
+              <button type="button" onClick={() => removeSize(i)}>X</button>
             </div>
           ))}
-          <button
-            type="button"
-            onClick={addSizeField}
-            className="text-yellow-600 font-semibold hover:underline"
-          >
-            + Add Another Size
-          </button>
         </div>
 
-        <button
-          type="submit"
-          className="bg-yellow-500 text-white px-4 py-2 rounded font-semibold hover:bg-yellow-600 transition"
-        >
-          Save Changes
-        </button>
+        <label>Gallery Images (Add More)</label>
+        <input type="file" multiple onChange={handleGalleryImages} />
+
+        <div className="gallery-preview">
+          {galleryPreview.map((src, i) => (
+            <img key={i} src={src} className="preview-thumb" />
+          ))}
+        </div>
+
+        <button className="submit-btn" type="submit">Save Changes</button>
       </form>
     </div>
   );

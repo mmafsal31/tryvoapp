@@ -1,134 +1,273 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import API from "../api/axios";
-import { getUser } from "../utils/auth";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 export default function AddProduct() {
+  const navigate = useNavigate();
+
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("clothing");
   const [description, setDescription] = useState("");
   const [keywords, setKeywords] = useState("");
+
   const [mainImage, setMainImage] = useState(null);
-  const [sizes, setSizes] = useState([{ size_label: "", price: "", quantity: "" }]);
-  const navigate = useNavigate();
-  const user = getUser();
+  const [mainPreview, setMainPreview] = useState(null);
 
-  const handleSizeChange = (index, field, value) => {
-    const newSizes = [...sizes];
-    newSizes[index][field] = value;
-    setSizes(newSizes);
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [galleryPreview, setGalleryPreview] = useState([]);
+
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [offerCategories, setOfferCategories] = useState([]);
+
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [selectedOfferCategory, setSelectedOfferCategory] = useState("");
+
+  const [sizes, setSizes] = useState([]);
+
+  // ==========================================
+  // LOAD CATEGORIES & OFFER CATEGORIES
+  // ==========================================
+  useEffect(() => {
+    API.get("/stores/categories/")
+      .then((res) => setCategories(res.data))
+      .catch(() => toast.error("Failed to load categories"));
+
+    API.get("/stores/offer-categories/")
+      .then((res) => setOfferCategories(res.data))
+      .catch(() => toast.error("Failed to load offers"));
+  }, []);
+
+  // ==========================================
+  // LOAD SUBCATEGORIES
+  // ==========================================
+  const handleCategoryChange = (id) => {
+    setSelectedCategory(id);
+    setSelectedSubcategory("");
+
+    if (!id) return setSubcategories([]);
+
+    API.get(`/stores/subcategories/${id}/`)
+      .then((res) => setSubcategories(res.data))
+      .catch(() => toast.error("Failed to load subcategories"));
   };
 
-  const addSizeField = () => {
+  // ==========================================
+  // MAIN IMAGE PREVIEW
+  // ==========================================
+  const handleMainImage = (e) => {
+    const file = e.target.files[0];
+    setMainImage(file);
+    setMainPreview(URL.createObjectURL(file));
+  };
+
+  // ==========================================
+  // GALLERY IMAGES PREVIEW
+  // ==========================================
+  const handleGalleryImages = (e) => {
+    const files = [...e.target.files];
+    setGalleryImages(files);
+    setGalleryPreview(files.map((f) => URL.createObjectURL(f)));
+  };
+
+  // ==========================================
+  // SIZE SYSTEM
+  // ==========================================
+  const addSize = () =>
     setSizes([...sizes, { size_label: "", price: "", quantity: "" }]);
+
+  const updateSize = (index, field, value) => {
+    const updated = [...sizes];
+    updated[index][field] = value;
+    setSizes(updated);
   };
 
+  const removeSize = (index) =>
+    setSizes(sizes.filter((_, i) => i !== index));
+
+  // ==========================================
+  // SUBMIT PRODUCT
+  // ==========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("category", category);
-    formData.append("description", description);
-    formData.append("keywords", keywords);
-    if (mainImage) formData.append("main_image", mainImage);
-    formData.append("sizes", JSON.stringify(sizes));
+    if (!name.trim()) return toast.error("Product name required");
+
+    const fd = new FormData();
+    fd.append("name", name);
+    fd.append("description", description);
+    fd.append("keywords", keywords);
+
+    if (mainImage) fd.append("main_image", mainImage);
+
+    if (selectedCategory) fd.append("store_category_id", selectedCategory);
+    if (selectedSubcategory) fd.append("store_subcategory_id", selectedSubcategory);
+    if (selectedOfferCategory) fd.append("offer_category_id", selectedOfferCategory);
+
+    // Sizes JSON
+    fd.append("sizes", JSON.stringify(sizes));
+
+    // Gallery images
+    galleryImages.forEach((img) => fd.append("images", img));
 
     try {
-      await API.post("products/", formData, {
-        headers: {
-          Authorization: `Bearer ${user.access}`,
-          "Content-Type": "multipart/form-data",
-        },
+      await API.post("/products/", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("✅ Product added successfully!");
-      navigate("/store/dashboard");
+
+      toast.success("Product Added Successfully!");
+
+      // RESET FORM
+      setName("");
+      setDescription("");
+      setKeywords("");
+      setMainImage(null);
+      setMainPreview(null);
+      setGalleryImages([]);
+      setGalleryPreview([]);
+      setSizes([]);
+      setSelectedCategory("");
+      setSelectedSubcategory("");
+      setSelectedOfferCategory("");
     } catch (err) {
-      console.error("Error adding product:", err);
-      alert("Failed to add product. Please try again.");
+      console.log("Error:", err.response?.data);
+      toast.error("Failed to add product");
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-xl shadow">
-      <h2 className="text-2xl font-bold text-yellow-600 mb-6">Add New Product</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Product Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full border p-2 rounded"
-          required
-        />
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full border p-2 rounded"
-        >
-          <option value="clothing">Clothing</option>
-          <option value="footwear">Footwear</option>
-        </select>
-        <textarea
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full border p-2 rounded"
-        />
-        <input
-          type="text"
-          placeholder="Keywords (comma separated)"
-          value={keywords}
-          onChange={(e) => setKeywords(e.target.value)}
-          className="w-full border p-2 rounded"
-        />
-        <input
-          type="file"
-          onChange={(e) => setMainImage(e.target.files[0])}
-          className="w-full border p-2 rounded"
-        />
+    <div className="add-product-container">
+      <style>{`
+        .add-product-container {
+          max-width: 700px;
+          margin: auto;
+          background: white;
+          padding: 24px;
+          border-radius: 10px;
+        }
+        label { font-weight: 600; margin-top: 15px; display: block; }
+        input,select,textarea {
+          width: 100%; 
+          padding: 10px;
+          margin-top: 6px;
+          border-radius: 8px;
+          border: 1px solid #ccc;
+        }
+        .size-row { display:flex; gap:10px; margin-top:10px; }
+        .submit-btn { background:black; color:white; padding:10px; margin-top:20px; width:100%; }
+        .preview-main { width: 180px; margin-top: 10px; border-radius: 6px; }
+        .gallery-preview { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+        .preview-thumb { width:90px; height:90px; border-radius:6px; object-fit:cover; border:1px solid #ccc; }
+        .manage-buttons button {
+          padding: 8px 14px;
+          border-radius: 6px;
+          color: white;
+          font-weight: 600;
+        }
+      `}</style>
 
-        <div>
-          <h3 className="font-semibold mb-2">Sizes</h3>
-          {sizes.map((size, index) => (
-            <div key={index} className="flex gap-2 mb-2">
-              <input
-                type="text"
-                placeholder="Size"
-                value={size.size_label}
-                onChange={(e) => handleSizeChange(index, "size_label", e.target.value)}
-                className="border p-2 flex-1 rounded"
-              />
-              <input
-                type="number"
-                placeholder="Price"
-                value={size.price}
-                onChange={(e) => handleSizeChange(index, "price", e.target.value)}
-                className="border p-2 flex-1 rounded"
-              />
-              <input
-                type="number"
-                placeholder="Quantity"
-                value={size.quantity}
-                onChange={(e) => handleSizeChange(index, "quantity", e.target.value)}
-                className="border p-2 flex-1 rounded"
-              />
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addSizeField}
-            className="text-yellow-600 font-semibold hover:underline"
-          >
-            + Add Another Size
-          </button>
-        </div>
+      {/* ================================
+          MANAGEMENT BUTTONS
+      ================================= */}
+      <div className="manage-buttons flex gap-3 mb-5">
+        <button
+          type="button"
+          style={{ background: "#2563eb" }}
+          onClick={() => navigate("/store/categories")}
+        >
+          Manage Categories
+        </button>
 
         <button
-          type="submit"
-          className="bg-yellow-500 text-white px-4 py-2 rounded font-semibold hover:bg-yellow-600 transition"
+          type="button"
+          style={{ background: "#7c3aed" }}
+          onClick={() => navigate("/store/subcategories")}
         >
-          Add Product
+          Manage Subcategories
         </button>
+
+        <button
+          type="button"
+          style={{ background: "#059669" }}
+          onClick={() => navigate("/manage/offers")}
+        >
+          Manage Offers
+        </button>
+      </div>
+
+      <h2>Add New Product</h2>
+
+      <form onSubmit={handleSubmit}>
+        <label>Product Name</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} />
+
+        <label>Description</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+
+        <label>Keywords</label>
+        <input value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+
+        <label>Main Image</label>
+        <input type="file" onChange={handleMainImage} />
+        {mainPreview && <img src={mainPreview} className="preview-main" />}
+
+        <label>Category</label>
+        <select value={selectedCategory} onChange={(e) => handleCategoryChange(e.target.value)}>
+          <option value="">-- Select --</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+
+        <label>Subcategory</label>
+        <select value={selectedSubcategory} onChange={(e) => setSelectedSubcategory(e.target.value)}>
+          <option value="">-- Select --</option>
+          {subcategories.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+
+        <label>Offer Category</label>
+        <select value={selectedOfferCategory} onChange={(e) => setSelectedOfferCategory(e.target.value)}>
+          <option value="">-- No offer --</option>
+          {offerCategories.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+        </select>
+
+        {/* Sizes */}
+        <div className="sizes-section">
+          <h3>Sizes</h3>
+          <button type="button" onClick={addSize}>+ Add Size</button>
+
+          {sizes.map((size, i) => (
+            <div className="size-row" key={i}>
+              <input
+                placeholder="Size"
+                value={size.size_label}
+                onChange={(e) => updateSize(i, "size_label", e.target.value)}
+              />
+              <input
+                placeholder="Price"
+                value={size.price}
+                type="number"
+                onChange={(e) => updateSize(i, "price", e.target.value)}
+              />
+              <input
+                placeholder="Qty"
+                value={size.quantity}
+                type="number"
+                onChange={(e) => updateSize(i, "quantity", e.target.value)}
+              />
+              <button type="button" onClick={() => removeSize(i)}>X</button>
+            </div>
+          ))}
+        </div>
+
+        <label>Gallery Images</label>
+        <input type="file" multiple onChange={handleGalleryImages} />
+
+        <div className="gallery-preview">
+          {galleryPreview.map((src, i) => (
+            <img key={i} src={src} className="preview-thumb" />
+          ))}
+        </div>
+
+        <button className="submit-btn" type="submit">Add Product</button>
       </form>
     </div>
   );

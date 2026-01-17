@@ -111,6 +111,7 @@ export default function StoreDashboard() {
 
           <nav className="flex flex-col gap-3">
             <SidebarLink to="/store/add-product" icon={<PlusCircle />} label="Add Product" />
+            <SidebarLink to="/store/bulk-upload" icon={<PlusCircle />} label="Bulk Upload" />
             <SidebarLink to="/store/pos" icon={<CreditCard />} label="POS" />
             <SidebarLink to="/store/sales-dashboard" icon={<BarChart3 />} label="Sales" />
             <SidebarLink to="/store/online-orders" icon={<Bell />} label="Online Orders" />
